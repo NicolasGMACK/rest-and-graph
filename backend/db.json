@@ -1,0 +1,18 @@
+{
+  "usuarios": [
+    { "id": "1", "nome": "Alice Silva", "avatar": "alice.png", "idsAmigos": ["2", "3"] },
+    { "id": "2", "nome": "Bob Santos", "avatar": "bob.png", "idsAmigos": ["1"] },
+    { "id": "3", "nome": "Charlie Costa", "avatar": "charlie.png", "idsAmigos": ["1", "4"] },
+    { "id": "4", "nome": "David Souza", "avatar": "david.png", "idsAmigos": ["3"] }
+  ],
+  "postagens": [
+    { "id": "101", "idAutor": "2", "conteudo": "Adorei o GraphQL! É muito mais rápido.", "idsCurtidas": ["1", "3"] },
+    { "id": "102", "idAutor": "3", "conteudo": "REST ainda é muito bom. #legado", "idsCurtidas": ["1"] },
+    { "id": "103", "idAutor": "1", "conteudo": "Meu primeiro post no Fakebook! 🚀", "idsCurtidas": [] }
+  ],
+  "comentarios": [
+    { "id": "1001", "idPostagem": "101", "idAutor": "1", "texto": "Concordo, Bob! É incrível!" },
+    { "id": "1002", "idPostagem": "101", "idAutor": "3", "texto": "Também estou aprendendo!" },
+    { "id": "1003", "idPostagem": "102", "idAutor": "2", "texto": "Hmm, não sei não... 😉" }
+  ]
+}

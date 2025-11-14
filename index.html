@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Demo API - REST, GraphQL & JWT</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px 40px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        #container {
+            margin: 0 auto;
+            background: #2d2d2d;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        h1, h2, h3, h4 {
+            font-weight: 400;
+            color: #d4d4d4;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+        h1 { font-weight: 300; font-size: 2em; margin-top: 0; }
+        h2 { margin-top: 40px; }
+        h4 { border-bottom: none; font-weight: 600; }
+        p { color: #aaa; line-height: 1.6; }
+        button {
+            background-color: #007acc;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #005f9e; }
+        button:disabled { background-color: #555; color: #aaa; cursor: not-allowed; }
+
+        #api-list {
+            background: #252526;
+            border: 1px solid #444;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 1em;
+            color: #9cdcfe;
+        }
+        #api-list span { color: #4ec9b0; }
+        
+        #tree-container {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            background: #252526;
+            padding: 15px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        #tree-container ul { list-style-type: none; padding-left: 25px; border-left: 1px solid #555; }
+        #tree-container li { position: relative; padding: 5px 0 5px 20px; line-height: 1.5; }
+        #tree-container li::before { content: ''; position: absolute; left: -25px; top: 15px; width: 20px; height: 1px; border-bottom: 1px solid #555; }
+        
+        .req { font-weight: bold; color: #569cd6; }
+        .impl { color: #c586c0; font-style: italic; }
+        .error-message { color: #f48771; font-weight: bold; }
+        
+        pre.json-highlight {
+            background: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            padding: 15px;
+            margin-top: 10px;
+            font-size: 1em;
+            color: #d4d4d4;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .json-key { color: #9cdcfe; }
+        .json-string { color: #ce9178; }
+        .json-number { color: #b5cea8; }
+        .json-boolean { color: #569cd6; }
+        .json-null { color: #569cd6; }
+        
+        .status-tag { padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8em; margin-left: 10px; }
+        .status-ok { background-color: #333; color: #4ec9b0; }
+        .status-error { background-color: #333; color: #f48771; }
+        
+        /* --- NOVOS ESTILOS PARA A SEÇÃO JWT --- */
+        .jwt-control { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            flex-wrap: wrap;
+        }
+        .jwt-control label { font-size: 0.9em; color: #aaa; }
+        .jwt-control input[type="text"] {
+            background: #1e1e1e; border: 1px solid #444; color: #d4d4d4;
+            padding: 8px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, monospace;
+        }
+        .jwt-control textarea {
+            background: #1e1e1e; border: 1px solid #444; color: #d4d4d4;
+            padding: 8px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, monospace;
+            width: 100%; box-sizing: border-box; resize: vertical; margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <h1>Demonstração: REST API Waterfall (Cachoeira)</h1>
+        <p>Uma simulação de como um frontend que consome uma API REST "legada" precisa fazer múltiplas chamadas para construir uma visualização de dados complexa.</p>
+
+        <h3>Endpoints REST Disponíveis (O Problema)</h3>
+        <pre id="api-list"><span>GET</span> /rest/usuarios/:id
+<span>GET</span> /rest/postagens?idAutor=:id
+<span>GET</span> /rest/comentarios?idPostagem=:id</pre>
+
+        <h2>Demonstração da Árvore de Dependências</h2>
+        <p>Clique no botão para simular o carregamento do feed da usuária "Alice" (ID: 1).</p>
+        
+        <button id="loadFeedBtn">Iniciar Árvore de Requisições</button>
+        <h3 style="margin-top: 20px; border: none; padding: 0;">Total de Requisições: <span id="req-total">0</span></h3>
+
+        <div id="tree-container">
+            <ul id="tree-root"></ul>
+        </div>
+
+        <h2>Resultado Final "Costurado" pelo Frontend</h2>
+        <p>Este é o JSON que o frontend teve que montar manualmente após todas as chamadas. É isso que o GraphQL entregaria em uma única requisição.</p>
+        <pre id="json-final-result" class="json-highlight">...</pre>
+        
+        <h2>Demonstração de Segurança (JWT)</h2>
+        <p>Aqui simulamos o fluxo de autenticação. Primeiro, geramos um token fazendo login. Depois, usamos esse token (o "Crachá") para acessar uma rota REST protegida.</p>
+        <p>(Para a demo de GraphQL protegido, usamos o Apollo Sandbox).</p>
+
+        <h4>Passo 1: Gerar Token (Login)</h4>
+        <div class="jwt-control">
+            <label for="login-nome">Nome de Usuário:</label>
+            <input type="text" id="login-nome" value="Alice">
+            <button id="btn-login">Gerar Token (POST /login)</button>
+        </div>
+        <h4>Token Recebido:</h4>
+        <pre id="jwt-token-result" class="json-highlight">...</pre>
+
+        <h4>Passo 2: Acessar Rota Protegida</h4>
+        <div class="jwt-control">
+            <label for="jwt-token-input">Cabeçalho (Header) "Authorization" para enviar:</label>
+            <textarea id="jwt-token-input" rows="3" placeholder="O token gerado acima será colocado aqui. (ex: Bearer eyJhbGci...)"></textarea>
+            <button id="btn-test-protected">Testar Rota (GET /rest/perfil-protegido)</button>
+        </div>
+        <h4>Resultado da Rota Protegida:</h4>
+        <pre id="protected-result" class="json-highlight">...</pre>
+        
+        </div>
+
+    <script>
+        const API_URL = 'http://localhost:4000';
+        const treeRoot = document.getElementById('tree-root');
+        const btn = document.getElementById('loadFeedBtn');
+        const totalCountEl = document.getElementById('req-total');
+        const finalJsonElement = document.getElementById('json-final-result');
+        
+        let requestCount = 0;
+
+        // --- Função de Syntax Highlighting (sem mudança) ---
+        function syntaxHighlight(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) { cls = 'json-key'; } else { cls = 'json-string'; }
+                } else if (/true|false/.test(match)) { cls = 'json-boolean'; } else if (/null/.test(match)) { cls = 'json-null'; }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        function addNode(message, parentElement, type = 'info') {
+            const li = document.createElement('li');
+            li.innerHTML = message;
+            li.className = type;
+            parentElement.appendChild(li);
+            return li;
+        }
+
+        async function fetchAPI(url, node) {
+            requestCount++;
+            totalCountEl.textContent = requestCount;
+            
+            try {
+                const response = await fetch(`${API_URL}${url}`);
+                if (!response.ok) throw new Error(`Falha ${response.status}`);
+                const data = await response.json();
+                
+                node.innerHTML += `<span class="status-tag status-ok">OK</span>`;
+                
+                const pre = document.createElement('pre');
+                pre.className = 'json-highlight';
+                pre.innerHTML = syntaxHighlight(data);
+                node.appendChild(pre);
+                return data;
+            } catch (e) {
+                node.innerHTML += `<span class="status-tag status-error">ERRO</span> <span class="error-message">${e.message}</span>`;
+                throw e;
+            }
+        }
+
+        // --- Lógica da Árvore (TUDO ATUALIZADO) ---
+        async function loadTree() {
+            btn.disabled = true;
+            btn.textContent = "Carregando...";
+            treeRoot.innerHTML = '';
+            finalJsonElement.innerHTML = '...';
+            requestCount = 0;
+            totalCountEl.textContent = '0';
+
+            let finalFeedData = []; 
+
+            try {
+                const rootNode = addNode('<b>Início:</b> Carregar Feed da Alice (ID: 1)', treeRoot);
+                const rootList = document.createElement('ul');
+                rootNode.appendChild(rootList);
+
+                // 1. Buscar Usuário
+                const userNode = addNode('<span class="req">GET /rest/usuarios/1</span>', rootList, 'req-item');
+                const user = await fetchAPI('/rest/usuarios/1', userNode);
+
+                // 2. Ramificação de Amigos
+                const friendsNode = addNode(`<span class="impl">Implicação:</span> Usuário é '${user.nome}'. Buscando posts dos amigos: <b>${user.idsAmigos.join(', ')}</b>`, userNode);
+                const friendsList = document.createElement('ul');
+                friendsNode.appendChild(friendsList);
+
+                for (const idAmigo of user.idsAmigos) {
+                    // 3. Buscar Posts de cada Amigo
+                    const postEndpoint = `/rest/postagens?idAutor=${idAmigo}`;
+                    const postNode = addNode(`<span class="req">GET ${postEndpoint}</span>`, friendsList, 'req-item');
+                    const posts = await fetchAPI(postEndpoint, postNode);
+
+                    if (posts.length > 0) {
+                        const postListNode = addNode(`<span class="impl">Implicação:</span> Encontrados ${posts.length} post(s) do Amigo ${idAmigo}.`, postNode);
+                        const postList = document.createElement('ul');
+                        postListNode.appendChild(postList);
+
+                        for (const post of posts) {
+                            let postData = {
+                                id: post.id,
+                                conteudo: post.conteudo,
+                                autor: {},
+                                comentarios: [],
+                                curtidas: []
+                            };
+
+                            const detailsNode = addNode(`<span class="impl">Buscando detalhes da Postagem ID: ${post.id}</span>`, postList);
+                            const detailsList = document.createElement('ul');
+                            detailsNode.appendChild(detailsList);
+
+                            // 4. Buscar Autor do Post
+                            const authorEndpoint = `/rest/usuarios/${post.idAutor}`;
+                            const authorNode = addNode(`<span class="req">GET ${authorEndpoint}</span> (Autor da Postagem)`, detailsList, 'req-item');
+                            const author = await fetchAPI(authorEndpoint, authorNode);
+                            postData.autor = { nome: author.nome, id: author.id };
+
+                            // 5. Buscar Comentários
+                            const commentEndpoint = `/rest/comentarios?idPostagem=${post.id}`;
+                            const commentNode = addNode(`<span class="req">GET ${commentEndpoint}</span>`, detailsList, 'req-item');
+                            const comments = await fetchAPI(commentEndpoint, commentNode);
+
+                            if (comments.length > 0) {
+                                const commentAuthorsNode = addNode(`<span class="impl">Implicação:</span> Buscando ${comments.length} autor(es) de comentários...`, detailsList);
+                                const commentAuthorsList = document.createElement('ul');
+                                commentAuthorsNode.appendChild(commentAuthorsList);
+                                
+                                for (const comment of comments) {
+                                    const commentAuthorEndpoint = `/rest/usuarios/${comment.idAutor}`;
+                                    const commentAuthorNode = addNode(`<span class="req">GET ${commentAuthorEndpoint}</span>`, commentAuthorsList, 'req-item');
+                                    const commentAuthor = await fetchAPI(commentAuthorEndpoint, commentAuthorNode);
+                                    postData.comentarios.push({
+                                        texto: comment.texto,
+                                        autor: { nome: commentAuthor.nome }
+                                    });
+                                }
+                            }
+
+                            // 7. Ramificação: Nomes de quem Curtiu
+                            if (post.idsCurtidas.length > 0) {
+                                const likesNode = addNode(`<span class="impl">Implicação:</span> Postagem tem ${post.idsCurtidas.length} curtida(s). Buscando nomes...`, detailsList);
+                                const likesList = document.createElement('ul');
+                                likesNode.appendChild(likesList);
+                                
+                                for (const idCurtida of post.idsCurtidas) {
+                                    const likeUserEndpoint = `/rest/usuarios/${idCurtida}`;
+                                    const likeUserNode = addNode(`<span class="req">GET ${likeUserEndpoint}</span>`, likesList, 'req-item');
+                                    const likeUser = await fetchAPI(likeUserEndpoint, likeUserNode);
+                                    postData.curtidas.push({ nome: likeUser.nome });
+                                }
+                            } else {
+                                addNode('0 Curtidas', detailsList);
+                            }
+                            
+                            finalFeedData.push(postData);
+                        }
+                    } else {
+                         addNode(`<span class="impl">Nenhuma postagem encontrada para o Amigo ${idAmigo}.</span>`, postNode);
+                    }
+                }
+                addNode('<b>Árvore Concluída!</b>', rootList);
+
+                finalJsonElement.innerHTML = syntaxHighlight(finalFeedData);
+
+            } catch (error) {
+                addNode(`ERRO GERAL: ${error.message}`, treeRoot, 'error-message');
+                finalJsonElement.innerHTML = `<span class="error-message">Falha ao gerar o resultado final.</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Iniciar Árvore de Requisições";
+            }
+        }
+        btn.addEventListener('click', loadTree);
+        
+        
+        // --- NOVO JAVASCRIPT PARA A SEÇÃO JWT ---
+        
+        const btnLogin = document.getElementById('btn-login');
+        const inputLoginNome = document.getElementById('login-nome');
+        const preTokenResult = document.getElementById('jwt-token-result');
+        const btnTestProtected = document.getElementById('btn-test-protected');
+        const inputJwtToken = document.getElementById('jwt-token-input');
+        const preProtectedResult = document.getElementById('protected-result');
+
+        // Evento para o botão de Login
+        btnLogin.addEventListener('click', async () => {
+            const nome = inputLoginNome.value;
+            preTokenResult.innerHTML = 'Gerando token...';
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome: nome })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) { throw new Error(data.error || 'Erro desconhecido'); }
+                
+                preTokenResult.innerHTML = syntaxHighlight(data);
+                // Auto-preenche o campo de teste!
+                inputJwtToken.value = 'Bearer ' + data.token; 
+            } catch (error) {
+                preTokenResult.innerHTML = syntaxHighlight({ erro: error.message });
+            }
+        });
+
+        // Evento para o botão de Teste da Rota Protegida
+        btnTestProtected.addEventListener('click', async () => {
+            const tokenCompleto = inputJwtToken.value;
+            preProtectedResult.innerHTML = 'Testando rota...';
+
+            if (!tokenCompleto.startsWith('Bearer ')) {
+                preProtectedResult.innerHTML = syntaxHighlight({ erro: "Token mal formatado. Deve começar com 'Bearer '" });
+                return;
+            }
+
+            try {
+                // Chama a nova rota protegida que criamos no backend
+                const response = await fetch(`${API_URL}/rest/perfil-protegido`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': tokenCompleto
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) { 
+                    // O erro de autorização (401, 403) também vem como JSON
+                    throw new Error(data.mensagem || 'Falha na autorização'); 
+                }
+                
+                preProtectedResult.innerHTML = syntaxHighlight(data);
+            } catch (error) {
+                preProtectedResult.innerHTML = syntaxHighlight({ erro: error.message });
+            }
+        });
+        
+    </script>
+</body>
+</html>
